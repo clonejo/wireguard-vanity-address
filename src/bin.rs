@@ -93,11 +93,23 @@ fn main() -> Result<(), Box<dyn Error>> {
                 .help("NAME must be found within first RANGE chars of pubkey (default: 10)"),
         )
         .arg(
+            Arg::with_name("ITERATIONS")
+                .long("iterations")
+                .takes_value(true)
+                .help("How many ITERATIONS to perform (default: 100_000_000)."),
+        )
+        .arg(
             Arg::with_name("NAME")
                 .required(true)
                 .help("string to find near the start of the pubkey"),
         )
         .get_matches();
+    let iterations: usize = matches
+        .value_of("ITERATIONS")
+        // 1M trials takes about 10s on my laptop, so let it run for 1000s
+        // 1M trials take just 0.5s on an AMD 5950X
+        .unwrap_or("100_000_000")
+        .parse()?;
     let prefix = matches.value_of("NAME").unwrap().to_ascii_lowercase();
     let len = prefix.len();
     let end: usize = 44.min(match matches.value_of("RANGE") {
@@ -155,8 +167,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     println!("hit Ctrl-C to stop");
 
-    // 1M trials takes about 10s on my laptop, so let it run for 1000s
-    (0..100_000_000)
+    (0..iterations)
         .into_par_iter()
         .map(|_| trial(&prefix, 0, end))
         .filter_map(|r| r)
