@@ -124,7 +124,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
         denom *= 64; // base64
     });
-    let trials_per_key = denom / num;
+    let trials_per_key: f64 = (denom as f64) / (num as f64);
 
     println!(
         "searching for '{}' in pubkey[0..{}], one of every {} keys should match",
@@ -135,27 +135,23 @@ fn main() -> Result<(), Box<dyn Error>> {
     // cores aren't actually distinct (hyperthreading?). My Core-i7 seems to
     // run at half the speed that this predicts.
 
-    if trials_per_key < 2u64.pow(32) {
-        let est = estimate_one_trial();
-        println!(
-            "one trial takes {}, CPU cores available: {}",
-            format_time(duration_to_f64(est)),
-            num_cpus::get()
-        );
-        let spk = duration_to_f64(
-            est // sec/trial on one core
-                .checked_div(num_cpus::get() as u32) // sec/trial with all cores
-                .unwrap()
-                .checked_mul(trials_per_key as u32) // sec/key (Duration)
-                .unwrap(),
-        );
-        let kps = 1.0 / spk;
-        println!(
-            "est yield: {} per key, {}",
-            format_time(spk),
-            format_rate(kps)
-        );
-    }
+    let est = estimate_one_trial();
+    println!(
+        "one trial takes {}, CPU cores available: {}",
+        format_time(duration_to_f64(est)),
+        num_cpus::get()
+    );
+    let spk: f64 = duration_to_f64(
+        est, // sec/trial on one core
+    ) / (num_cpus::get() as f64) // sec/trial with all cores
+        *trials_per_key; // sec/key (Duration)
+
+    let kps = 1.0 / spk;
+    println!(
+        "est yield: {} per key, {}",
+        format_time(spk),
+        format_rate(kps)
+    );
 
     println!("hit Ctrl-C to stop");
 
